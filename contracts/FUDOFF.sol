@@ -693,13 +693,14 @@ contract FUDOFF is Context, IERC20, Ownable {
     uint256 private constant MAX = ~uint256(0);
 
     // ******************* START VARIABLES *******************
-    string private _name = "FUDOFF";                                   // name
-    string private _symbol = "FUDOFF";                                 // symbol
-    uint256 private _tTotal = 100000000000 * 10**uint256(_decimals);   // 100 billion total supply
-    uint256 public _taxFee = 3;                                        // 3% to holders
-    uint256 public _liquidityFee = 11;                                 // 4% converted to liquidity, 7% to wallet(s)
-    uint256 public _maxTxAmount = _tTotal.div(200);                    // max transaction amount is 0.5% of token supply.
-    uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000); // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
+    string private _name = "FUDOFF";                                                   // name
+    string private _symbol = "FUDOFF";                                                 // symbol
+    uint256 private _tTotal = 100000000000 * 10**9;                                    // 100 billion total supply
+    uint256 public _taxFee = 3;                                                        // 3% to holders
+    uint256 public _liquidityFee = 11;                                                 // 4% converted to liquidity, 7% to wallet(s)
+    uint256 public _maxTxAmount = _tTotal.div(200);                                    // max transaction amount is 0.5% of token supply.
+    uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000);                 // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
+    address public  PancakeRouterAddress = 0x10ED43C718714eb63d5aA57B78B54704E256024E; // Pancake Router Version 2 address
     // ******************* END VARIABLES *********************
 
     uint256 private _tFeeTotal;
@@ -735,7 +736,7 @@ contract FUDOFF is Context, IERC20, Ownable {
 
         _wallets.push(0x54E67cC25bc438C6AAcEC9cfde0dc5EB1Ab435AE);
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(PancakeRouterAddress);
          // Create a uniswap pair for this new token
         uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
