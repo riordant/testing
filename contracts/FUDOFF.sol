@@ -693,15 +693,13 @@ contract FUDOFF is Context, IERC20, Ownable {
     uint256 private constant MAX = ~uint256(0);
 
     // ******************* START VARIABLES *******************
-    string private _name = "FUDOFF";                                 // name
-    string private _symbol = "FUDOFF";                               // symbol
-    uint256 private _tTotal = 100000000000 * 10**uint256(_decimals); // 100 billion total supply
-    uint256 public _taxFee = 3;                                      // 3% to holders
-    uint256 public _liquidityFee = 11;                               // 4% converted to liquidity, 7% to wallet(s)
-    // max tx amount is 0.5% of token supply.
-    uint256 public _maxTxAmount = _tTotal.div(200); 
-    // number of tokens to trigger swap and sell is 0.05% of token supply.
-    uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000); 
+    string private _name = "FUDOFF";                                   // name
+    string private _symbol = "FUDOFF";                                 // symbol
+    uint256 private _tTotal = 100000000000 * 10**uint256(_decimals);   // 100 billion total supply
+    uint256 public _taxFee = 3;                                        // 3% to holders
+    uint256 public _liquidityFee = 11;                                 // 4% converted to liquidity, 7% to wallet(s)
+    uint256 public _maxTxAmount = _tTotal.div(200);                    // max transaction amount is 0.5% of token supply.
+    uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000); // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
     // ******************* END VARIABLES *********************
 
     uint256 private _tFeeTotal;

@@ -1,1 +1,4 @@
-# FUDOFF
+# install
+`npm install`
+
+`truffle compile`
