@@ -682,6 +682,23 @@ contract FUDOFF is Context, IERC20, Ownable {
     using SafeMath for uint256;
     using Address for address;
 
+    uint8 private _decimals = 9;
+
+    // ********************************* START VARIABLES *********************************
+    string private _name = "FUDOFF";                                                     // name
+    string private _symbol = "FUDOFF";                                                   // symbol
+    uint256 private _tTotal = 100000000000 * 10**uint256(_decimals);                     // total supply
+    uint256 public _taxFee = 3;                                                          // % to holders
+    uint256 public _swapAndLiquifyFee = 4;                                               // % to swap and add to liquidity
+    uint256 public _walletsFee = 7;                                                      // % to wallets
+    uint256 public _maxTxAmount = _tTotal.div(50);                                       // % max transaction amount (of total supply)
+    uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000);                   // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
+    address public  pancakeRouterAddress = 0x10ED43C718714eb63d5aA57B78B54704E256024E;   // Pancake Router Version 2 address
+    address payable[] public _wallets = [                                                // wallet(s) to receive _walletsFee.
+        0x54E67cC25bc438C6AAcEC9cfde0dc5EB1Ab435AE                                       //
+    ];                                                                                   //
+    // ********************************** END VARIABLES **********************************
+
     mapping (address => uint256) private _rOwned;
     mapping (address => uint256) private _tOwned;
     mapping (address => mapping (address => uint256)) private _allowances;
@@ -691,29 +708,18 @@ contract FUDOFF is Context, IERC20, Ownable {
     mapping (address => bool) private _isExcluded;
     address[] private _excluded;
     uint256 private constant MAX = ~uint256(0);
-
-    // ******************* START VARIABLES *******************
-    string private _name = "FUDOFF";                                                   // name
-    string private _symbol = "FUDOFF";                                                 // symbol
-    uint256 private _tTotal = 100000000000 * 10**9;                                    // 100 billion total supply
-    uint256 public _taxFee = 3;                                                        // 3% to holders
-    uint256 public _liquidityFee = 11;                                                 // 4% converted to liquidity, 7% to wallet(s)
-    uint256 public _maxTxAmount = _tTotal.div(200);                                    // max transaction amount is 0.5% of token supply.
-    uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000);                 // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
-    address public  PancakeRouterAddress = 0x10ED43C718714eb63d5aA57B78B54704E256024E; // Pancake Router Version 2 address
-    // ******************* END VARIABLES *********************
+    uint256 public _liquidityFee = _swapAndLiquifyFee.add(_walletsFee);
 
     uint256 private _tFeeTotal;
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
-    uint8 private _decimals = 9;
     
-    uint256 private _previousTaxFee = _taxFee;    
+    
+    uint256 private _previousTaxFee = _taxFee;
     uint256 private _previousLiquidityFee = _liquidityFee;
 
     IUniswapV2Router02 public immutable uniswapV2Router;
     address public immutable uniswapV2Pair;
-    address payable[] public _wallets;
-    
+
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled = true;
     
@@ -733,10 +739,8 @@ contract FUDOFF is Context, IERC20, Ownable {
     
     constructor () public {
         _rOwned[_msgSender()] = _rTotal;
-
-        _wallets.push(0x54E67cC25bc438C6AAcEC9cfde0dc5EB1Ab435AE);
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(PancakeRouterAddress);
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(pancakeRouterAddress);
          // Create a uniswap pair for this new token
         uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
@@ -1056,9 +1060,12 @@ contract FUDOFF is Context, IERC20, Ownable {
     }
 
     function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
-        // split the contract balance into percentage chunks.
-        uint256 halfOfLiquify = contractTokenBalance.div(_liquidityFee).mul(2);   // 2% to buy BNB, 2% to provide to liquidity pool.
-        uint256 portionForFees = contractTokenBalance.sub(halfOfLiquify.mul(2)); // remaining 7% for wallet.
+        // split into percentage chunks and get full liquify amount
+        uint256 liquify = contractTokenBalance.div(_liquidityFee).mul(_swapAndLiquifyFee);
+        // get liquify halves. ensure we are using the full liquify amount
+        uint[2] memory liquifyHalves = [liquify.div(2), liquify.sub(liquify.div(2))];
+        // remaining amount for wallets.
+        uint256 portionForFees = contractTokenBalance.sub(liquify);
 
         // capture the contract's current ETH balance.
         // this is so that we can capture exactly the amount of ETH that the
@@ -1067,16 +1074,17 @@ contract FUDOFF is Context, IERC20, Ownable {
         uint256 initialBalance = address(this).balance;
 
         // swap tokens for ETH
-        swapTokensForEth(halfOfLiquify); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
+        swapTokensForEth(liquifyHalves[0]); // <- this breaks the ETH -> HATE swap when swap+liquify is triggered
 
         // how much ETH did we just swap into?
         uint256 newBalance = address(this).balance.sub(initialBalance);
 
         // add liquidity to uniswap
-        addLiquidity(halfOfLiquify, newBalance);
+        addLiquidity(liquifyHalves[1], newBalance);
+        // send fee portion to wallets.
         sendBNBToWallets(portionForFees);
         
-        emit SwapAndLiquify(halfOfLiquify, newBalance, halfOfLiquify);
+        emit SwapAndLiquify(liquifyHalves[0], newBalance, liquifyHalves[1]);
     }
 
     function swapTokensForEth(uint256 tokenAmount) private {
