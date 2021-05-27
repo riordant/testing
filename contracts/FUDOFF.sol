@@ -1,4 +1,5 @@
 pragma solidity ^0.6.6;
+pragma experimental ABIEncoderV2;
 // SPDX-License-Identifier: Unlicensed
 interface IERC20 {
 
@@ -684,20 +685,26 @@ contract FUDOFF is Context, IERC20, Ownable {
 
     uint8 private _decimals = 9;
 
+    struct Wallet {
+        address payable receiver;
+        uint percentage;
+    }
+
     // ********************************* START VARIABLES *********************************
     string private _name = "FUDOFF";                                                     // name
     string private _symbol = "FUDOFF";                                                   // symbol
     uint256 private _tTotal = 100000000000 * 10**uint256(_decimals);                     // total supply
-    uint256 public _taxFee = 3;                                                          // % to holders
+    uint256 public _taxFee = 1;                                                          // % to holders
     uint256 public _swapAndLiquifyFee = 4;                                               // % to swap and add to liquidity
-    uint256 public _walletsFee = 7;                                                      // % to wallets
+    uint256 public _walletsFee = 6;                                                      // % to wallets
     uint256 public _maxTxAmount = _tTotal.div(50);                                       // % max transaction amount (of total supply)
     uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000);                   // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
     address public  pancakeRouterAddress = 0x10ED43C718714eb63d5aA57B78B54704E256024E;   // Pancake Router Version 2 address
-    address payable[] public _wallets = [                                                // wallet(s) to receive _walletsFee.
-        0x54E67cC25bc438C6AAcEC9cfde0dc5EB1Ab435AE                                       //
-    ];                                                                                   //
+    Wallet[] public _wallets;                                                            // wallets to receive walletFee, along with percentage of _walletsFee to each (specified in constructor)
     // ********************************** END VARIABLES **********************************
+
+
+
 
     mapping (address => uint256) private _rOwned;
     mapping (address => uint256) private _tOwned;
@@ -739,6 +746,9 @@ contract FUDOFF is Context, IERC20, Ownable {
     
     constructor () public {
         _rOwned[_msgSender()] = _rTotal;
+
+        _wallets.push(Wallet(0xFefc71ab50c01DCCfB6Bd6270460a16BFbc4e9Cd, 67));
+        _wallets.push(Wallet(0x6f56477fa19CFBC3CB606FeA35A7B37CBDb2f444, 33));
         
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(pancakeRouterAddress);
          // Create a uniswap pair for this new token
@@ -954,6 +964,12 @@ contract FUDOFF is Context, IERC20, Ownable {
         if(_isExcluded[address(this)])
             _tOwned[address(this)] = _tOwned[address(this)].add(tLiquidity);
     }
+
+    function calculateWalletAmount(uint256 _amount, uint256 _percentage) private pure returns (uint256) {
+        return _amount.mul(_percentage).div(
+            10**2
+        );
+    }
     
     function calculateTaxFee(uint256 _amount) private view returns (uint256) {
         return _amount.mul(_taxFee).div(
@@ -988,21 +1004,28 @@ contract FUDOFF is Context, IERC20, Ownable {
     
     function sendBNBToWallets(uint256 amount) private { 
         swapTokensForEth(amount);
-        uint amountPerWallet = address(this).balance.div(_wallets.length);
+        // get original balance
+        uint BNBBalance = address(this).balance;
         // send up to but not including the last wallet
         for(uint i=0; i<_wallets.length-1; i++){
-            _wallets[i].transfer(amountPerWallet);
+            uint amountToWallet = calculateWalletAmount(BNBBalance, _wallets[i].percentage);
+            _wallets[i].receiver.transfer(amountToWallet);
         }
         // send remaining balance. this ensures no BNB is left in the contract.
-        _wallets[_wallets.length-1].transfer(address(this).balance);
+        _wallets[_wallets.length-1].receiver.transfer(address(this).balance);
     }
     
-    function _setWallets(address payable[] calldata _addresses) external onlyOwner() {
-        require(_addresses.length==_wallets.length, "Different size of input to wallets size.");
+    function _setWallets(Wallet[] calldata wallets) external onlyOwner() {
+        require(wallets.length==_wallets.length, "Different size of input to wallets size.");
+        uint percentages = 0;
 
         for(uint i=0; i<_wallets.length;i++){
-            _wallets[i] = _addresses[i];
+            _wallets[i].receiver = wallets[i].receiver;
+            _wallets[i].percentage = wallets[i].percentage;
+            percentages = percentages.add(wallets[i].percentage);
         }
+
+        require(percentages == 100, "Percentages does not equal 100.");
     }
 
     function _approve(address owner, address spender, uint256 amount) private {
