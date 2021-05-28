@@ -18,5 +18,9 @@
   "bugs": {
     "url": "https://github.com/riordant/FUDOFF/issues"
   },
-  "homepage": "https://github.com/riordant/FUDOFF#readme"
+  "homepage": "https://github.com/riordant/FUDOFF#readme",
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^1.4.0",
+    "ethers": "^5.2.0"
+  }
 }
