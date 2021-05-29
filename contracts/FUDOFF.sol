@@ -691,7 +691,7 @@ contract FUDOFF is Context, IERC20, Ownable {
     uint256 public _taxFee = 3;                                                          // % to holders
     uint256 public _swapAndLiquifyFee = 4;                                               // % to swap and add to liquidity
     uint256 public _walletsFee = 7;                                                      // % to wallets
-    uint256 public _maxTxAmount = _tTotal.div(50);                                       // % max transaction amount (of total supply)
+    uint256 public _maxTxAmount = _tTotal.div(10);                                       // % max transaction amount (of total supply)
     uint256 private numTokensSellToAddToLiquidity = _tTotal.div(2000);                   // contract balance to trigger swap to liquidity and wallet transfer is 0.05% of token supply.
     address public  pancakeRouterAddress = 0x10ED43C718714eb63d5aA57B78B54704E256024E;   // Pancake Router Version 2 address
     address payable[] public _wallets = [                                                // wallet(s) to receive _walletsFee.
